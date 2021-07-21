@@ -1,70 +1,119 @@
-# Getting Started with Create React App
+# React Context VS Redux
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Over the las 5 or 6 years, I often had the need of prototyping ideas in simples MVP in order to validate them an than, some times keep iterering on them until the point of moving the "prototyped" MVP in to a "real" product.
 
-## Available Scripts
+I always tryied to do not fall in the routine of building always the same infrastucture/stack, mainly for two reasons.
 
-In the project directory, you can run:
+1. Repetitive work will not bring to any kind of innovation.
+2. It was the only "effective" way to keep myself up to date with latest technologies.
 
-### `yarn start`
+I still thinking this is a goos approach but I lately realise, expecially in web-app, you will always end with some "pillar" or combination of "pillars" that need to be in place.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+I have to admit that on the React side, the `react-create-app` make a big difference, I always end up installing also some other pack that I feel needed.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+In my case for example I always add from the begin:
 
-### `yarn test`
+- `Redux` (thunk or saga)
+- `Material-ui`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+At least this was until I do not start to use more and more the `React Context`.
+I personally like the context idea, somewhat for me make more sense the way context operate, how different parts of the app can sync on different context etc etc.
 
-### `yarn build`
+First time that I notice the advantage of using a context whas when I was actually deeging in to the `<ThemeProvider/>` of material-ui. The way the `custom-theme` of material-ui was actually available to all material-ui components, make me realise that this approach was actually not much different, on the end result, from the way `Redux` was exposing the `globalState` to all connected component in a normal `react-redux` webapp.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+So a sort of fun idea po-up in to my mind. What if I replace the entire `Redux` state wuth the `reacr contect` I tryed and seems to work :). I had to admit that the first attempt with:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- 1 Context
+- 1 Actions set
+- 1 Reducer set
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Was quite easy and straight forward.
 
-### `yarn eject`
+But what if I want to keep 1 context, but have actions and reducers separeted by "domains" for example?
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+So there it gose the solution I found and that I waould like to sahere to get some feedback :)
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+[Source code (GitHub)](https://github.com/marcosomma/react-redux-alternative)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+As you can see it is a basic `react` repo except for the `context` folder:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## Context
 
-## Learn More
+As I told before I would like to keep havin a single context, but I would like (for keep the code clean) to split all the `actions` and `reducers` in speareted files, but keep having all of them accessibles from any component.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+![desired file structure](./readme-images/fileStructure.png 'desired file structure')
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Actions
 
-### Code Splitting
+This was quite easy, As you can see I have the `index.js` collecting all `actions` and expose them in a centalysed way.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```js
+import actions01 from './actions01'
+import actions02 from './actions02'
 
-### Analyzing the Bundle Size
+const rootActions = (dispatch) => {
+  return {
+    actions01: actions01(dispatch),
+    actions02: actions02(dispatch),
+  }
+}
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+export default rootActions
+```
 
-### Making a Progressive Web App
+### Reducers
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Those was a bit "creative" solution. What I'm basically doing is combining all reducers in that way the state will always pass trought all of them and just apply the needed trasformation based on the dispached action.
 
-### Advanced Configuration
+```js
+import reducer01 from './reducer01'
+import reducer02 from './reducer02'
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+const combineReducers =
+  (...reducers) =>
+  (state, action) =>
+    reducers.reduce((acc, nextReducer) => nextReducer(acc, action), state)
 
-### Deployment
+const reducers = combineReducers(reducer01, reducer02)
+export default reducers
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### GlobalContext provider
 
-### `yarn build` fails to minify
+```js
+import React, { createContext, useReducer } from 'react'
+import reducers from './reducers'
+import actions from './actions'
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+const initialState = {
+  isLoading: false,
+  title: 'React BoilerPlate',
+  text: 'reducer example',
+}
+
+export const GlobalContext = createContext(initialState)
+
+export const GlobalState = (props) => {
+  const [state, dispatch] = useReducer(reducers, initialState)
+  const actionsRooter = actions(dispatch)
+
+  return (
+    <GlobalContext.Provider
+      value={{
+        actionsRooter,
+        state,
+      }}
+    >
+      {props.children}
+    </GlobalContext.Provider>
+  )
+}
+```
+
+Lately I'm importing and serving `actions` and `state` to all childrens of the `<GlobalContext>`.
+
+I'm actually using this approach in several MVP projects and seems to work pretty fine and without needs of using and dealing also with `Redux`.
+
+[Here](https://github.com/marcosomma/react-material-boilerplate) you have a similar boilerplate that also include `material-ui`,
+
+That's it! Feedback are more than welcome!
